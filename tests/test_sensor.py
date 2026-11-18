@@ -15,9 +15,11 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from . import (
     BASE_URL,
     BERLIN,
+    CANCELLED_HOTEL_IN_OSAKA,
     FLIGHT_TO_TOKYO,
     JAPAN,
     LISBON,
+    PARIS,
     ROTTERDAM,
     TRAIN_TO_ROTTERDAM,
     mock_api,
@@ -313,6 +315,56 @@ async def test_a_reservation_of_a_trip_that_is_over_is_left_out(
     assert attributes["reservations"] == [FLIGHT_ATTRIBUTES]
     _, attributes = _state(hass, "sensor.wayfare_next_trip")
     assert attributes["reservations"] == []
+
+
+async def test_a_cancelled_trip_is_not_under_way(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    tick: Callable[[], Awaitable[None]],
+    config_entry: MockConfigEntry,
+) -> None:
+    # Begun after the trip to Japan, so it would be the current one.
+    mock_api(aioclient_mock, trips=[LISBON, JAPAN, PARIS, ROTTERDAM])
+
+    await tick()
+
+    assert _state(hass, "sensor.wayfare_current_trip")[0] == "Autumn in Japan"
+
+
+async def test_a_cancelled_trip_is_not_ahead(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    tick: Callable[[], Awaitable[None]],
+    config_entry: MockConfigEntry,
+) -> None:
+    paris = {**PARIS, "start": "2026-10-20", "end": "2026-10-22"}
+    mock_api(aioclient_mock, trips=[JAPAN, paris, ROTTERDAM])
+
+    await tick()
+
+    assert _state(hass, "sensor.wayfare_next_trip")[0] == "Trip to Rotterdam"
+    assert _state(hass, "sensor.wayfare_upcoming_trips") == (
+        "1",
+        {
+            "trips": [ROTTERDAM_ATTRIBUTES],
+            "state_class": "measurement",
+            "unit_of_measurement": "trips",
+        },
+    )
+
+
+async def test_a_cancelled_reservation_is_left_out(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    tick: Callable[[], Awaitable[None]],
+    config_entry: MockConfigEntry,
+) -> None:
+    mock_api(aioclient_mock, reservations=[FLIGHT_TO_TOKYO, CANCELLED_HOTEL_IN_OSAKA])
+
+    await tick()
+
+    _, attributes = _state(hass, "sensor.wayfare_current_trip")
+    assert attributes["reservations"] == [FLIGHT_ATTRIBUTES]
 
 
 async def test_sensors_follow_wayfare(

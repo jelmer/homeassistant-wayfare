@@ -40,6 +40,8 @@ class Trip:
     destinations: list[str]
     start: date
     end: date
+    # Every booking on it was cancelled. wayfare still lists such a trip.
+    cancelled: bool
 
     @property
     def title(self) -> str:
@@ -94,6 +96,8 @@ class Reservation:
     # Where a leg departs from, or where a stay or event is.
     origin: Place | None
     destination: Place | None
+    # wayfare keeps a cancelled booking on its trip.
+    cancelled: bool
 
 
 @dataclass(frozen=True)
@@ -147,6 +151,7 @@ def _parse_trip(raw: dict[str, Any]) -> Trip:
         destinations=list(raw.get("destinations", [])),
         start=date.fromisoformat(raw["start"]),
         end=date.fromisoformat(raw["end"]),
+        cancelled=raw.get("cancelled", False),
     )
 
 
@@ -175,6 +180,7 @@ def _parse_reservation(raw: dict[str, Any]) -> Reservation:
         end=_optional(_parse_moment, raw.get("end")),
         origin=_optional(_parse_place, raw.get("origin")),
         destination=_optional(_parse_place, raw.get("destination")),
+        cancelled=raw.get("cancelled", False),
     )
 
 
@@ -246,9 +252,9 @@ class WayfareClient:
     async def trips(self) -> list[Trip]:
         """Fetch the trips wayfare has stored.
 
-        wayfare files newly inferred trips while it answers `reservations`
-        or `stats`, not this, so ask one of those first to see the trips that
-        bookings which just arrived belong to.
+        Before 0.1.1, wayfare filed newly inferred trips while it answered
+        `reservations` or `stats` but not this, so ask one of those first to
+        see the trips that bookings which just arrived belong to.
         """
         url = self._base.joinpath("api", "v1", "trips")
         return await self._fetch(url, _parse_list(_parse_trip))

@@ -29,10 +29,12 @@ from custom_components.wayfare.api import (
 
 from . import (
     BASE_URL,
+    CANCELLED_HOTEL_IN_OSAKA,
     FLIGHT_TO_TOKYO,
     HOTEL_IN_KYOTO,
     JAPAN,
     LISBON,
+    PARIS,
     STATS,
     mock_api,
 )
@@ -67,6 +69,7 @@ async def test_trips(
             destinations=["Lisbon"],
             start=date(2026, 5, 14),
             end=date(2026, 5, 17),
+            cancelled=False,
         ),
         Trip(
             id="2026-09-japan",
@@ -74,6 +77,7 @@ async def test_trips(
             destinations=["Japan"],
             start=date(2026, 9, 28),
             end=date(2026, 10, 9),
+            cancelled=False,
         ),
     ]
 
@@ -97,6 +101,24 @@ async def test_a_trip_without_destinations(
             destinations=[],
             start=date(2027, 1, 10),
             end=date(2027, 1, 24),
+            cancelled=False,
+        )
+    ]
+
+
+async def test_a_cancelled_trip(
+    client: WayfareClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    mock_api(aioclient_mock, trips=[PARIS])
+
+    assert await client.trips() == [
+        Trip(
+            id="2026-10-paris",
+            name=None,
+            destinations=["Paris"],
+            start=date(2026, 10, 4),
+            end=date(2026, 10, 20),
+            cancelled=True,
         )
     ]
 
@@ -119,6 +141,7 @@ def test_trip_title(name: str | None, destinations: list[str], title: str) -> No
         destinations=destinations,
         start=date(2026, 5, 14),
         end=date(2026, 5, 17),
+        cancelled=False,
     )
 
     assert trip.title == title
@@ -143,6 +166,7 @@ async def test_reservations(
             destination=Place(
                 label="HND", name=None, code="HND", locality=None, coord=None
             ),
+            cancelled=False,
         ),
         Reservation(
             kind="lodging",
@@ -160,7 +184,35 @@ async def test_reservations(
                 coord=Coord(lat=34.9858, lon=135.7588),
             ),
             destination=None,
+            cancelled=False,
         ),
+    ]
+
+
+async def test_a_cancelled_reservation(
+    client: WayfareClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    mock_api(aioclient_mock, reservations=[CANCELLED_HOTEL_IN_OSAKA])
+
+    assert await client.reservations() == [
+        Reservation(
+            kind="lodging",
+            trip="2026-09-japan",
+            summary="Stay at Hotel Osaka",
+            provider="Hotel Osaka",
+            reservation_number="20117",
+            start=date(2026, 10, 8),
+            end=date(2026, 10, 9),
+            origin=Place(
+                label="Hotel Osaka",
+                name="Hotel Osaka",
+                code=None,
+                locality=None,
+                coord=None,
+            ),
+            destination=None,
+            cancelled=True,
+        )
     ]
 
 

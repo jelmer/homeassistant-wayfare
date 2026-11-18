@@ -52,6 +52,15 @@ BERLIN = {
     "reservations": [],
 }
 TRIPS = [LISBON, JAPAN, ROTTERDAM, BERLIN]
+# A trip all of whose bookings were called off, which wayfare still lists.
+PARIS = {
+    "id": "2026-10-paris",
+    "destinations": ["Paris"],
+    "start": "2026-10-04",
+    "end": "2026-10-20",
+    "reservations": ["2026/eurostar-k8wqzt.json"],
+    "cancelled": True,
+}
 
 FLIGHT_TO_TOKYO = {
     "source": "2026/ana-j7k2lm-2026-09-28.json",
@@ -98,6 +107,21 @@ TRAIN_TO_ROTTERDAM = {
     "end_date": "2026-11-02",
     "origin": {"label": "London St Pancras Int'l", "name": "London St Pancras Int'l"},
     "destination": {"label": "Rotterdam Centraal", "name": "Rotterdam Centraal"},
+}
+CANCELLED_HOTEL_IN_OSAKA = {
+    "source": "2026/hotel-osaka-20117.json",
+    "kind": "lodging",
+    "trip": "2026-09-japan",
+    "summary": "Stay at Hotel Osaka",
+    "provider": "Hotel Osaka",
+    "reservation_number": "20117",
+    "start": "2026-10-08",
+    "end": "2026-10-09",
+    "start_date": "2026-10-08",
+    "end_date": "2026-10-09",
+    "origin": {"label": "Hotel Osaka", "name": "Hotel Osaka"},
+    "cancelled": True,
+    "status": "Cancelled",
 }
 # What is booked from the day the trip to Japan starts.
 RESERVATIONS = [FLIGHT_TO_TOKYO, HOTEL_IN_KYOTO, TRAIN_TO_ROTTERDAM]

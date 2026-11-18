@@ -31,10 +31,12 @@ type WayfareConfigEntry = ConfigEntry[WayfareCoordinator]
 class WayfareData:
     """One poll's worth of wayfare state."""
 
-    # Every trip, past ones included, in the order they start.
+    # Every trip that was not cancelled, past ones included, in the order
+    # they start.
     trips: list[Trip]
     # By trip id, in the order wayfare lists them, which is by date. Only for
-    # trips that had not ended on the day of the poll.
+    # trips that had not ended on the day of the poll, and without the
+    # cancelled bookings.
     reservations: dict[str, list[Reservation]]
     stats: Stats
 
@@ -60,7 +62,7 @@ def _by_trip(
     for reservation in reservations:
         # The range asked for can catch a booking of a trip that is over,
         # which nothing here shows.
-        if reservation.trip in grouped:
+        if reservation.trip in grouped and not reservation.cancelled:
             grouped[reservation.trip].append(reservation)
     return grouped
 
@@ -82,11 +84,14 @@ class WayfareCoordinator(DataUpdateCoordinator[WayfareData]):
 
     async def _async_update_data(self) -> WayfareData:
         try:
-            # One at a time, and the stats first: wayfare files the trips it
-            # has inferred while working those out, and only lists what it
-            # has filed.
+            # One at a time, and the stats first: wayfare before 0.1.1 files
+            # the trips it has inferred while working those out, and only
+            # lists what it has filed.
             stats = await self.client.stats()
-            trips = sorted(await self.client.trips(), key=lambda t: (t.start, t.id))
+            trips = sorted(
+                (trip for trip in await self.client.trips() if not trip.cancelled),
+                key=lambda t: (t.start, t.id),
+            )
             today = dt_util.now().date()
             open_trips = [trip for trip in trips if trip.end >= today]
             reservations = (
