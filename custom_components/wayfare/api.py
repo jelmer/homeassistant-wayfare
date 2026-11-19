@@ -9,6 +9,7 @@ from http import HTTPStatus
 from typing import Any
 
 import aiohttp
+from aiohttp import hdrs
 from yarl import URL
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
@@ -242,6 +243,10 @@ class WayfareClient:
             if username is None
             else {"Authorization": aiohttp.encode_basic_auth(username, password or "")}
         )
+        # The last answer for each endpoint, with its URL and ETag, so wayfare
+        # can say it has not changed instead of sending it again. Kept by path
+        # so that asking for many ranges of dates does not pile them up.
+        self._last: dict[str, tuple[URL, str, Any]] = {}
 
     async def trips(self) -> list[Trip]:
         """Fetch the trips wayfare has stored.
@@ -280,12 +285,26 @@ class WayfareClient:
             ) from err
 
     async def _get(self, url: URL) -> Any:
+        headers = dict(self._headers)
+        last = self._last.get(url.path)
+        if last is not None and last[0] != url:
+            last = None
+        if last is not None:
+            headers[hdrs.IF_NONE_MATCH] = last[1]
         try:
             async with self._session.get(
-                url, headers=self._headers, timeout=REQUEST_TIMEOUT
+                url, headers=headers, timeout=REQUEST_TIMEOUT
             ) as response:
+                if response.status == HTTPStatus.NOT_MODIFIED and last is not None:
+                    return last[2]
                 if response.status == HTTPStatus.OK:
-                    return await response.json()
+                    body = await response.json()
+                    etag = response.headers.get(hdrs.ETAG)
+                    if etag is None:
+                        self._last.pop(url.path, None)
+                    else:
+                        self._last[url.path] = (url, etag, body)
+                    return body
                 reason = await _error_message(response)
                 # wayfare itself answers 403 when it has nowhere to store
                 # trips, which no other credentials would fix.
