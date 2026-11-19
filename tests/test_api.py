@@ -471,3 +471,83 @@ async def test_basic_auth_is_sent(guarded_wayfare: test_utils.TestServer) -> Non
         )
 
         assert await client.stats() == EXPECTED_STATS
+
+
+@pytest.fixture
+async def tagging_wayfare(
+    socket_enabled: None,
+) -> AsyncGenerator[tuple[test_utils.TestServer, list[str | None]]]:
+    """A server that tags its stats, as wayfare does, and records what it is sent.
+
+    The second element lists the `If-None-Match` of each request.
+    """
+    sent: list[str | None] = []
+    current: dict[str, Any] = {"stats": STATS, "etag": '"one"'}
+
+    async def stats(request: web.Request) -> web.Response:
+        if_none_match = request.headers.get("If-None-Match")
+        sent.append(if_none_match)
+        if if_none_match == current["etag"]:
+            return web.Response(status=304, headers={"ETag": current["etag"]})
+        return web.json_response(current["stats"], headers={"ETag": current["etag"]})
+
+    async def change(request: web.Request) -> web.Response:
+        current["stats"] = {**STATS, "trips": 5}
+        current["etag"] = '"two"'
+        return web.Response(status=204)
+
+    app = web.Application()
+    app.router.add_get("/api/v1/stats", stats)
+    app.router.add_post("/change", change)
+    server = test_utils.TestServer(app)
+    await server.start_server()
+    try:
+        yield server, sent
+    finally:
+        await server.close()
+
+
+async def test_what_has_not_changed_is_not_sent_again(
+    tagging_wayfare: tuple[test_utils.TestServer, list[str | None]],
+) -> None:
+    server, sent = tagging_wayfare
+    async with aiohttp.ClientSession() as session:
+        client = WayfareClient(session, str(server.make_url("")))
+
+        assert await client.stats() == EXPECTED_STATS
+        assert await client.stats() == EXPECTED_STATS
+        await session.post(server.make_url("/change"))
+        assert (await client.stats()).trips == 5
+        assert (await client.stats()).trips == 5
+
+    assert sent == [None, '"one"', '"one"', '"two"']
+
+
+async def test_not_modified_without_asking_is_an_error(
+    client: WayfareClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    aioclient_mock.get(f"{BASE_URL}/api/v1/stats", status=304)
+
+    with pytest.raises(WayfareResponseError, match="HTTP 304"):
+        await client.stats()
+
+
+async def test_only_the_last_range_asked_for_is_remembered(
+    client: WayfareClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    url = f"{BASE_URL}/api/v1/reservations"
+    aioclient_mock.get(url, json=[], headers={"ETag": '"one"'})
+
+    await client.reservations(start=date(2026, 9, 28))
+    await client.reservations(start=date(2026, 11, 2))
+    await client.reservations(start=date(2026, 11, 2))
+    await client.reservations(start=date(2026, 9, 28))
+
+    assert [
+        headers.get("If-None-Match") for *_, headers in aioclient_mock.mock_calls
+    ] == [
+        None,
+        None,
+        '"one"',
+        None,
+    ]
