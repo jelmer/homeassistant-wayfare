@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from homeassistant.const import CONF_URL
@@ -49,6 +50,10 @@ class WayfareEntity(CoordinatorEntity[WayfareCoordinator]):
         }
 
 
+def _optional_isoformat(moment: datetime | None) -> str | None:
+    return None if moment is None else moment.isoformat()
+
+
 def _place_attributes(place: Place | None) -> dict[str, Any] | None:
     if place is None:
         return None
@@ -71,6 +76,8 @@ def reservation_attributes(reservation: Reservation) -> dict[str, Any]:
         "reservation_number": reservation.reservation_number,
         "start": reservation.start.isoformat(),
         "end": None if reservation.end is None else reservation.end.isoformat(),
+        "start_at": _optional_isoformat(reservation.start_at),
+        "end_at": _optional_isoformat(reservation.end_at),
         "origin": _place_attributes(reservation.origin),
         "destination": _place_attributes(reservation.destination),
     }

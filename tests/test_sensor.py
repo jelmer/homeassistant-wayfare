@@ -70,6 +70,8 @@ FLIGHT_ATTRIBUTES = {
     "reservation_number": "J7K2LM",
     "start": "2026-09-28T19:00:00",
     "end": "2026-09-29T15:50:00",
+    "start_at": "2026-09-28T19:00:00+01:00",
+    "end_at": "2026-09-29T15:50:00+09:00",
     "origin": _place("LHR", code="LHR"),
     "destination": _place("HND", code="HND"),
 }
@@ -80,6 +82,8 @@ HOTEL_ATTRIBUTES = {
     "reservation_number": "88341",
     "start": "2026-09-30",
     "end": "2026-10-08",
+    "start_at": None,
+    "end_at": None,
     "origin": _place(
         "Hotel Granvia Kyoto",
         name="Hotel Granvia Kyoto",
@@ -96,6 +100,8 @@ TRAIN_ATTRIBUTES = {
     "reservation_number": "M2GRPC",
     "start": "2026-11-02T08:16:00",
     "end": "2026-11-02T12:32:00",
+    "start_at": None,
+    "end_at": None,
     "origin": _place("London St Pancras Int'l", name="London St Pancras Int'l"),
     "destination": _place("Rotterdam Centraal", name="Rotterdam Centraal"),
 }

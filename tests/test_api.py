@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import aiohttp
@@ -154,21 +154,37 @@ async def test_reservations(
 
     assert await client.reservations() == [
         Reservation(
+            source="2026/ana-j7k2lm-2026-09-28.json",
             kind="flight",
             trip="2026-09-japan",
             summary="NH212: LHR to HND",
             provider="ANA",
             reservation_number="J7K2LM",
-            # Without a time zone, as wayfare only reports the local time.
+            # The time on the clock where it happens.
             start=datetime(2026, 9, 28, 19, 0),
             end=datetime(2026, 9, 29, 15, 50),
-            origin=Place(label="LHR", name=None, code="LHR", locality=None, coord=None),
+            start_at=datetime(2026, 9, 28, 19, 0, tzinfo=timezone(timedelta(hours=1))),
+            end_at=datetime(2026, 9, 29, 15, 50, tzinfo=timezone(timedelta(hours=9))),
+            origin=Place(
+                label="LHR",
+                name=None,
+                code="LHR",
+                locality=None,
+                address=None,
+                coord=None,
+            ),
             destination=Place(
-                label="HND", name=None, code="HND", locality=None, coord=None
+                label="HND",
+                name=None,
+                code="HND",
+                locality=None,
+                address=None,
+                coord=None,
             ),
             cancelled=False,
         ),
         Reservation(
+            source="2026/hotel-granvia-88341.json",
             kind="lodging",
             trip="2026-09-japan",
             summary="Stay at Hotel Granvia Kyoto",
@@ -176,11 +192,14 @@ async def test_reservations(
             reservation_number="88341",
             start=date(2026, 9, 30),
             end=date(2026, 10, 8),
+            start_at=None,
+            end_at=None,
             origin=Place(
                 label="Hotel Granvia Kyoto",
                 name="Hotel Granvia Kyoto",
                 code=None,
                 locality="Kyoto",
+                address="901 Higashi-Shiokoji-cho, Kyoto",
                 coord=Coord(lat=34.9858, lon=135.7588),
             ),
             destination=None,
@@ -196,6 +215,7 @@ async def test_a_cancelled_reservation(
 
     assert await client.reservations() == [
         Reservation(
+            source="2026/hotel-osaka-20117.json",
             kind="lodging",
             trip="2026-09-japan",
             summary="Stay at Hotel Osaka",
@@ -203,17 +223,30 @@ async def test_a_cancelled_reservation(
             reservation_number="20117",
             start=date(2026, 10, 8),
             end=date(2026, 10, 9),
+            start_at=None,
+            end_at=None,
             origin=Place(
                 label="Hotel Osaka",
                 name="Hotel Osaka",
                 code=None,
                 locality=None,
+                address=None,
                 coord=None,
             ),
             destination=None,
             cancelled=True,
         )
     ]
+
+
+async def test_a_moment_without_an_offset_is_an_error(
+    client: WayfareClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    flight = {**FLIGHT_TO_TOKYO, "start_at": "2026-09-28T19:00:00"}
+    mock_api(aioclient_mock, reservations=[flight])
+
+    with pytest.raises(WayfareResponseError, match="has no UTC offset"):
+        await client.reservations()
 
 
 @pytest.mark.parametrize(
