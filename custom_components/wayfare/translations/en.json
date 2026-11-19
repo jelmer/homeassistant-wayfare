@@ -58,6 +58,9 @@
     "calendar": {
       "trips": {
         "name": "Trips"
+      },
+      "reservations": {
+        "name": "Bookings"
       }
     },
     "sensor": {

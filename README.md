@@ -7,8 +7,8 @@ extracts from email into trips.
 
 It reads wayfare's JSON API every five minutes and exposes the trip that
 is under way, the next one and wayfare's totals as sensors, along with a
-binary sensor that says whether you are travelling and a calendar of every
-trip.
+binary sensor that says whether you are travelling, a calendar of every
+trip and a calendar of every booking.
 
 ## Entities
 
@@ -29,6 +29,7 @@ trip.
 | Distance travelled | Kilometres by plane, train, bus and ferry, over every trip |
 | Countries | Countries any reservation started or ended in, over every trip |
 | Trips | Calendar; one all-day event per trip |
+| Bookings | Calendar; one event per flight, train, stay or other booking |
 
 A trip is under way from its first day up to and including its last, going
 by the date in Home Assistant's time zone. The entities move on with the
@@ -39,15 +40,18 @@ Otherwise they describe the trip in their attributes: its `id`, `name`,
 `destinations`, `start`, `end` and the `url` of its page in wayfare, and
 the `reservations` booked for it. Each reservation has a `kind` (`flight`,
 `train`, `bus`, `boat`, `lodging`, `event` or `food`), `summary`,
-`provider`, `reservation_number`, `start`, `end`, `origin` and
-`destination`. "Upcoming trips" lists the trips it counts in a `trips`
+`provider`, `reservation_number`, `start`, `end`, `start_at`, `end_at`,
+`origin` and `destination`. Cancelled bookings are left out, as are trips
+whose bookings were all cancelled. "Upcoming trips" lists the trips it counts in a `trips`
 attribute, without their reservations. Both lists are kept out of the
 recorder.
 
-The times of a reservation are those on the clock where it happens, e.g.
-`2026-05-14T07:25:00` for a flight that leaves Amsterdam at 07:25.
-wayfare does not report what time zone that is, which is also why the
-calendar has the trips but not the individual reservations.
+`start` and `end` are the times on the clock where a reservation happens,
+e.g. `2026-05-14T07:25:00` for a flight that leaves Amsterdam at 07:25.
+`start_at` and `end_at` are the same moments with their UTC offset, e.g.
+`2026-05-14T07:25:00+02:00`, and are null where the booking did not give
+one. The bookings calendar takes a time without an offset to be in Home
+Assistant's time zone.
 
 A trip that was not named by hand is called after its destinations, as in
 "Trip to Berlin and Prague". wayfare's own pages shorten several stops in

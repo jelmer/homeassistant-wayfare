@@ -75,6 +75,7 @@ class Place:
     name: str | None
     code: str | None
     locality: str | None
+    address: str | None
     coord: Coord | None
 
 
@@ -82,6 +83,8 @@ class Place:
 class Reservation:
     """One leg or stay, as listed by `/api/v1/reservations`."""
 
+    # The file wayfare read it from, which the legs of a return share.
+    source: str
     # `flight`, `train`, `bus`, `boat`, `lodging`, `event` or `food`.
     kind: str
     # The id of the trip this was grouped into.
@@ -89,10 +92,13 @@ class Reservation:
     summary: str
     provider: str | None
     reservation_number: str | None
-    # The wall-clock time where it happens, which is all wayfare reports: a
-    # datetime here is naive. A booking for a day rather than a time has a date.
+    # The wall-clock time where it happens: a datetime here is naive. A
+    # booking for a day rather than a time has a date.
     start: date | datetime
     end: date | datetime | None
+    # The moments `start` and `end` name, where the booking gave an offset.
+    start_at: datetime | None
+    end_at: datetime | None
     # Where a leg departs from, or where a stay or event is.
     origin: Place | None
     destination: Place | None
@@ -139,6 +145,14 @@ def _parse_moment(raw: str) -> date | datetime:
         return datetime.fromisoformat(raw)
 
 
+def _parse_instant(raw: str) -> datetime:
+    """Parse an RFC 3339 timestamp, which has to say its offset."""
+    instant = datetime.fromisoformat(raw)
+    if instant.tzinfo is None:
+        raise ValueError(f"{raw!r} has no UTC offset")
+    return instant
+
+
 def _optional[T](parse: Callable[[Any], T], raw: Any) -> T | None:
     return None if raw is None else parse(raw)
 
@@ -165,12 +179,14 @@ def _parse_place(raw: dict[str, Any]) -> Place:
         name=raw.get("name"),
         code=raw.get("code"),
         locality=raw.get("locality"),
+        address=raw.get("address"),
         coord=_optional(_parse_coord, raw.get("coord")),
     )
 
 
 def _parse_reservation(raw: dict[str, Any]) -> Reservation:
     return Reservation(
+        source=raw["source"],
         kind=raw["kind"],
         trip=raw["trip"],
         summary=raw["summary"],
@@ -178,6 +194,8 @@ def _parse_reservation(raw: dict[str, Any]) -> Reservation:
         reservation_number=raw.get("reservation_number"),
         start=_parse_moment(raw["start"]),
         end=_optional(_parse_moment, raw.get("end")),
+        start_at=_optional(_parse_instant, raw.get("start_at")),
+        end_at=_optional(_parse_instant, raw.get("end_at")),
         origin=_optional(_parse_place, raw.get("origin")),
         destination=_optional(_parse_place, raw.get("destination")),
         cancelled=raw.get("cancelled", False),
