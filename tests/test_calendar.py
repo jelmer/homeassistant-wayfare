@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from . import BASE_URL, LISBON, mock_api
+from . import BASE_URL, JAPAN, LISBON, PARIS, mock_api
 
 ENTITY_ID = "calendar.wayfare_trips"
 
@@ -166,4 +166,20 @@ async def test_a_trip_without_destinations_has_no_location(
             "summary": "2027-03-somewhere",
             "description": f"{BASE_URL}/trip/2027-03-somewhere",
         }
+    ]
+
+
+async def test_a_cancelled_trip_is_no_event(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    tick: Callable[[], Awaitable[None]],
+    config_entry: MockConfigEntry,
+) -> None:
+    mock_api(aioclient_mock, trips=[JAPAN, PARIS])
+
+    await tick()
+
+    assert _state(hass)[1]["message"] == "Autumn in Japan"
+    assert await _events(hass, "2026-10-01 00:00:00", "2026-12-01 00:00:00") == [
+        JAPAN_EVENT
     ]

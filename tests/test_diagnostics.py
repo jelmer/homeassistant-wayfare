@@ -18,6 +18,7 @@ def _trip(start: date, end: date, name: str | None = None) -> dict[str, object]:
         "destinations": REDACTED,
         "start": start,
         "end": end,
+        "cancelled": False,
     }
 
 
