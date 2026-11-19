@@ -71,6 +71,8 @@ FLIGHT_TO_TOKYO = {
     "reservation_number": "J7K2LM",
     "start": "2026-09-28 19:00",
     "end": "2026-09-29 15:50",
+    "start_at": "2026-09-28T19:00:00+01:00",
+    "end_at": "2026-09-29T15:50:00+09:00",
     "start_date": "2026-09-28",
     "end_date": "2026-09-29",
     "origin": {"label": "LHR", "code": "LHR"},
@@ -91,6 +93,7 @@ HOTEL_IN_KYOTO = {
         "label": "Hotel Granvia Kyoto",
         "name": "Hotel Granvia Kyoto",
         "locality": "Kyoto",
+        "address": "901 Higashi-Shiokoji-cho, Kyoto",
         "coord": {"lat": 34.9858, "lon": 135.7588},
     },
 }

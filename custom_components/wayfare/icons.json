@@ -11,6 +11,9 @@
     "calendar": {
       "trips": {
         "default": "mdi:calendar-month"
+      },
+      "reservations": {
+        "default": "mdi:ticket-confirmation"
       }
     },
     "sensor": {
